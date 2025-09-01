@@ -1,5 +1,7 @@
 # yap.nvim
 
+![yap.nvim](not-the-same.png)
+
 > Can't quit vim but still need to tweet? Yap's got you covered.
 
 Finally, you can chase that sweet monetization payout without ever leaving your beloved text editor. Post directly to X (formerly Twitter) from the comfort of your modal editing paradise.
