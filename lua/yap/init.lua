@@ -147,6 +147,8 @@ function M.setup(opts)
 		access_token_secret = opts.access_token_secret or vim.env.X_ACCESS_TOKEN_SECRET,
 	}
 
+	local keybind = opts.post_key or "<C-p>"
+
 	local missing = {}
 	for name, value in pairs(creds) do
 		if not value or value == "" then
@@ -165,22 +167,94 @@ function M.setup(opts)
 
 	credentials = creds
 
+	local function open_tweet_buffer()
+		local buf = vim.api.nvim_create_buf(false, true)
+		vim.api.nvim_set_option_value("buftype", "nofile", { buf = buf })
+		vim.api.nvim_set_option_value("bufhidden", "wipe", { buf = buf })
+		vim.api.nvim_set_option_value("swapfile", false, { buf = buf })
+		vim.api.nvim_set_option_value("filetype", "markdown", { buf = buf })
+
+		local width = math.floor(vim.o.columns * 0.5)
+		local height = math.floor(vim.o.lines * 0.25)
+		local row = math.floor((vim.o.lines - height) / 2)
+		local col = math.floor((vim.o.columns - width) / 2)
+
+		local win = vim.api.nvim_open_win(buf, true, {
+			relative = "editor",
+			width = width,
+			height = height,
+			row = row,
+			col = col,
+			style = "minimal",
+			border = "rounded",
+			title = string.format(" Yap (%s to post) ", keybind),
+			title_pos = "center",
+		})
+
+		vim.api.nvim_set_option_value("wrap", true, { win = win })
+		vim.api.nvim_set_option_value("linebreak", true, { win = win })
+
+		vim.api.nvim_buf_set_lines(buf, 0, -1, false, { "" })
+		vim.api.nvim_win_set_cursor(win, { 1, 0 })
+		vim.cmd("startinsert")
+
+		local function update_char_count()
+			local lines = vim.api.nvim_buf_get_lines(buf, 0, -1, false)
+			local text = table.concat(lines, "\n")
+			local count = #text
+			local title = string.format(" Yap (%d/%d) - %s to post ", count, TWEET_CHAR_LIMIT, keybind)
+			vim.api.nvim_win_set_config(win, { title = title })
+		end
+
+		vim.api.nvim_create_autocmd({ "TextChanged", "TextChangedI" }, {
+			buffer = buf,
+			callback = update_char_count,
+		})
+
+		local function send_tweet()
+			local lines = vim.api.nvim_buf_get_lines(buf, 0, -1, false)
+			local tweet_text = table.concat(lines, "\n"):gsub("^%s*(.-)%s*$", "%1")
+
+			if tweet_text == "" then
+				vim.notify("Tweet cannot be empty", vim.log.levels.WARN)
+				return
+			end
+
+			vim.api.nvim_win_close(win, true)
+
+			local ok, result = pcall(tweet, tweet_text)
+			if ok then
+				vim.notify("Tweet posted!", vim.log.levels.INFO)
+			else
+				vim.notify(tostring(result), vim.log.levels.ERROR)
+			end
+		end
+
+		vim.api.nvim_buf_create_user_command(buf, "Send", send_tweet, {})
+
+		if keybind and keybind ~= "" then
+			vim.api.nvim_buf_set_keymap(buf, "n", keybind, ":Send<CR>", {
+				noremap = true,
+				silent = true,
+			})
+		end
+
+		vim.api.nvim_create_autocmd("BufDelete", {
+			buffer = buf,
+			once = true,
+			callback = function()
+				if vim.api.nvim_win_is_valid(win) then
+					vim.api.nvim_win_close(win, true)
+				end
+			end,
+		})
+	end
+
 	vim.api.nvim_create_user_command("Yap", function(cmd_opts)
 		local text = cmd_opts.args
 
 		if text == "" then
-			vim.ui.input({ prompt = "Yap: " }, function(input)
-				if not input or input == "" then
-					return
-				end
-
-				local ok, result = pcall(tweet, input)
-				if ok then
-					vim.notify("Tweet posted!", vim.log.levels.INFO)
-				else
-					vim.notify(tostring(result), vim.log.levels.ERROR)
-				end
-			end)
+			open_tweet_buffer()
 		else
 			local ok, result = pcall(tweet, text)
 			if ok then

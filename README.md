@@ -7,6 +7,8 @@ Finally, you can chase that sweet monetization payout without ever leaving your 
 ## Features
 
 - Post tweets using the `:Yap` command
+- Multi-line tweet composer with text wrapping
+- Real-time character count display
 - OAuth 1.0a authentication
 - Secure credential management via environment variables
 - Character count validation
@@ -81,6 +83,7 @@ require("yap").setup({
   api_secret = "your_api_secret_here",
   access_token = "your_access_token_here",
   access_token_secret = "your_access_token_secret_here",
+  post_key = "<C-p>",  -- Optional: customize the keybind (default: <C-p>)
 })
 ```
 
@@ -92,13 +95,17 @@ require("yap").setup({
 
 ## Usage
 
-### Post a tweet interactively
+### Compose a tweet
 
 ```vim
 :Yap
 ```
 
-Opens a prompt.
+Opens a floating window where you can compose your tweet:
+- Write multi-line tweets with proper text wrapping
+- See real-time character count in the window title
+- Press `<C-p>` (or your custom keybind) in normal mode to post
+- Press `:q` to cancel
 
 ### Post a tweet directly
 
@@ -106,15 +113,23 @@ Opens a prompt.
 :Yap Just posted a tweet without leaving Neovim. I am become productivity, destroyer of context switches.
 ```
 
+Posts the text immediately without opening the composer.
+
 ### Flex on your coworkers
 
 ```vim
 :Yap vim > emacs
 ```
 
+### Keybindings in the Tweet Composer
+
+- `<C-p>` - Post the tweet (customizable via `post_key` option)
+- `:q` - Cancel and close the composer
+- `:Send` - Alternative command to post the tweet
+
 ### Character Limit
 
-Tweets are limited to 280 characters, just like the real thing. The plugin will show an error if you exceed this limit.
+Tweets are limited to 280 characters, just like the real thing. The composer shows a real-time character count, and the plugin will show an error if you exceed this limit.
 
 ### API Limits
 
